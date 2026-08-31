@@ -13,6 +13,9 @@ shading correction that happens after.
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _distribution_version
+
 from ._bias import bias_field_correct
 from ._coils import coil_compress, noise_prewhiten
 from ._density import pipe_menon_dcf
@@ -27,8 +30,12 @@ from ._fourier import (
     torch_or_numpy,
 )
 from ._partial import POCS, Homodyne, fill_partial_echo, remove_readout_oversampling
-from ._version import version as __version__
 from ._windows import apodize, fermi_window, hann_window
+
+try:
+    __version__ = _distribution_version(__name__)
+except PackageNotFoundError:  # a source tree that was never installed
+    __version__ = "0.0.0.dev0"
 
 __all__ = [
     "POCS",

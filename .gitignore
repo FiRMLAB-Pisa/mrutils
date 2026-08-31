@@ -7,7 +7,6 @@ dist/
 wheelhouse/
 *.egg-info/
 .eggs/
-src/*/_version.py
 
 .venv/
 venv/

@@ -56,8 +56,10 @@ Source = "https://github.com/FiRMLAB-Pisa/mrutils"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# No write_to: the version is read at runtime with importlib.metadata, which
+# works the same under setuptools and under scikit-build-core. A generated
+# _version.py only exists under one of them.
 [tool.setuptools_scm]
-write_to = "src/mrutils/_version.py"
 version_scheme = "python-simplified-semver"
 local_scheme = "no-local-version"
 fallback_version = "0.0.0.dev0"
