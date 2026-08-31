@@ -3,7 +3,7 @@
 ## Getting set up
 
 ```bash
-git clone https://github.com/FiRMLab-Pisa/mrutils.git
+git clone https://github.com/FiRMLAB-Pisa/mrutils.git
 cd mrutils
 python -m venv .venv && source .venv/bin/activate
 pip install -e .[dev]

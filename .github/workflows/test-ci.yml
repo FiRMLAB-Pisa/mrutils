@@ -41,7 +41,7 @@ jobs:
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: FiRMLab-Pisa/mrutils
+          slug: FiRMLAB-Pisa/mrutils
 
   # Proves the claim the dependency layout rests on: with no CUDA extra and no
   # device, nothing errors -- the GPU tests skip.

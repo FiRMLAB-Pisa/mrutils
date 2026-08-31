@@ -47,9 +47,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/FiRMLab-Pisa/mrutils"
-Issues = "https://github.com/FiRMLab-Pisa/mrutils/issues"
-Source = "https://github.com/FiRMLab-Pisa/mrutils"
+Homepage = "https://github.com/FiRMLAB-Pisa/mrutils"
+Issues = "https://github.com/FiRMLAB-Pisa/mrutils/issues"
+Source = "https://github.com/FiRMLAB-Pisa/mrutils"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report privately through
-[GitHub's private advisory form](https://github.com/FiRMLab-Pisa/mrutils/security/advisories/new).
+[GitHub's private advisory form](https://github.com/FiRMLAB-Pisa/mrutils/security/advisories/new).
 Please do not open a public issue for a vulnerability.
 
 Include what you would need yourself to reproduce it: the version or commit,
