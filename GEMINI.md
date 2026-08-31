@@ -11,11 +11,17 @@ scripts/sync_agent_docs.sh, which pre-commit runs. Edit this file, never those.
 
 Thin MRI pre- and post-processing utilities: centred FFTs, coil compression, noise prewhitening, partial Fourier, windowing, bias-field correction.
 
-It is one of a family of small, single-purpose MRI packages. The layering is
-strict: `mrutils` is the base; `torchsolve`, `mrtoeplitz`, `mrllr`, `mrmotion`
-and `mrdistortion` sit on it and never import each other; `deepmr` sits on all
-of them. If you find yourself wanting a sibling's code, the answer is either to
-move it down into `mrutils` or to move the caller up into `deepmr`.
+**This package is the base of the family**, so it depends on no sibling and
+never will. `torchsolve`, `mrtoeplitz`, `mrllr`, `mrmotion` and `mrdistortion`
+sit on it and never import each other; `deepmr` sits on all of them.
+
+What belongs here is what more than one of those needs and that knows nothing
+about a reconstruction. A solver, a physics operator, a sensitivity estimator or
+anything holding scan state belongs in a package above, not here. If something
+here starts needing one of them, it was in the wrong package.
+
+Torch is an optional dependency, not a required one: every function takes NumPy
+as readily as a tensor. Do not add a module-level `import torch`.
 
 **deepinv is a `deepmr`-only dependency.** Everything below it is plain Torch
 with duck-typed operators (`A`, `A_adjoint`, `shape`). Do not import deepinv
