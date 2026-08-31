@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrutils"
-description = "Thin MRI pre- and post-processing utilities: centred FFTs, coil compression, noise prewhitening, partial Fourier, windowing, bias-field correction."
+description = "Thin MRI pre- and post-processing utilities: centred FFTs, coil compression, noise prewhitening, EPI corrections, apodization, bias-field correction."
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version"]
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["mri", "coil-compression", "prewhitening", "partial-fourier"]
+keywords = ["mri", "coil-compression", "prewhitening", "epi", "bias-field"]
 authors = [{ name = "Matteo Cencini", email = "matteo.cencini@gmail.com" }]
 classifiers = [
   "Development Status :: 3 - Alpha",

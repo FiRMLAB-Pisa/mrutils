@@ -7,8 +7,8 @@ workstation and neither should have to convert to reach it.
 The package is deliberately small. It holds what more than one reconstruction
 package needs and nothing that belongs to a reconstruction itself: the centered
 Fourier convention, the receive-array corrections that happen before a solve,
-partial-Fourier filling, the EPI readout corrections, apodization, and the
-shading correction that happens after.
+the EPI readout corrections, apodization, and the shading correction that
+happens after.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from ._fourier import (
     resize_centered_axis,
     torch_or_numpy,
 )
-from ._partial import POCS, Homodyne, fill_partial_echo, remove_readout_oversampling
+from ._readout import remove_readout_oversampling
 from ._windows import apodize, fermi_window, hann_window
 
 try:
@@ -38,8 +38,6 @@ except PackageNotFoundError:  # a source tree that was never installed
     __version__ = "0.0.0.dev0"
 
 __all__ = [
-    "POCS",
-    "Homodyne",
     "__version__",
     "apodize",
     "bias_field_correct",
@@ -51,7 +49,6 @@ __all__ = [
     "fermi_window",
     "fftc",
     "field_map",
-    "fill_partial_echo",
     "hann_window",
     "ifftc",
     "noise_prewhiten",
