@@ -42,17 +42,17 @@ re-derives the shifts.
 ```python
 import mrutils as mru
 
-kspace = mru.fftc(image)                    # last two axes by default
-plane  = mru.ifftc(volume, axes=-1)         # decouple a readout
+kspace = mru.fftc(image)  # last two axes by default
+plane = mru.ifftc(volume, axes=-1)  # decouple a readout
 padded = mru.resize_centered(kspace, (256, 256))
 ```
 
 ### Before the solve
 
 ```python
-compressed, basis = mru.coil_compress(kspace, 8)      # or 0.95 of the energy
-whitened          = mru.noise_prewhiten(kspace, noise_scan, coil_axis=0)
-cropped           = mru.remove_readout_oversampling(readout, 256)
+compressed, basis = mru.coil_compress(kspace, 8)  # or 0.95 of the energy
+whitened = mru.noise_prewhiten(kspace, noise_scan, coil_axis=0)
+cropped = mru.remove_readout_oversampling(readout, 256)
 ```
 
 `coil_compress` returns the basis as well as the compressed data, so the
@@ -76,11 +76,11 @@ Ramp-sampling resampling is a change of basis rather than an interpolation: the
 readout is band-limited, so samples taken anywhere determine it everywhere.
 
 ```python
-operator  = mru.epi_ramp_operator(sampled_k, uniform_k, support=matrix)
-on_grid   = train @ operator.T
+operator = mru.epi_ramp_operator(sampled_k, uniform_k, support=matrix)
+on_grid = train @ operator.T
 
-phase     = mru.estimate_epi_phase([plus, minus, plus])
-corrected = mru.correct_lines([(line, is_reversed) for ...], phase)
+phase = mru.estimate_epi_phase([plus, minus, plus])
+corrected = mru.correct_lines(train_lines, phase)  # [(line, is_reversed), ...]
 ```
 
 The fit is the *correction*, so it comes back as the negative of the phase the
@@ -89,11 +89,11 @@ reversed line was carrying.
 ### After the solve
 
 ```python
-apodized  = mru.apodize(kspace, kind="fermi", radius=0.9, width=0.05)
-apodized  = mru.apodize(kspace, kind="hann")
-corrected = mru.bias_field_correct(magnitude)          # N4, needs [bias]
+apodized = mru.apodize(kspace, kind="fermi", radius=0.9, width=0.05)
+apodized = mru.apodize(kspace, kind="hann")
+corrected = mru.bias_field_correct(magnitude)  # N4, needs [bias]
 offset_hz = mru.field_map(echo_images, echo_times)
-weights   = mru.pipe_menon_dcf(trajectory, (256, 256)) # needs [dcf]
+weights = mru.pipe_menon_dcf(trajectory, (256, 256))  # needs [dcf]
 ```
 
 Windows are radial in normalized k, so an anisotropic matrix gets an ellipsoid

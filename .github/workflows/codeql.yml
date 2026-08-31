@@ -5,13 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "31 4 * * 1"
 
 jobs:
   analyze:
     name: Analyze Python
     runs-on: ubuntu-latest
+    # Code scanning on a private repository needs GitHub Advanced Security,
+    # and uploading results without it is a hard error rather than a warning.
+    # The job stands down while the repository is private and starts working
+    # on its own once it is made public.
+    if: github.event.repository.visibility == 'public'
     permissions:
       security-events: write
       packages: read
