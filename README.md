@@ -54,20 +54,46 @@ readout = mru.remove_readout_oversampling(digitised, 256)
 ### Before the solve
 
 A noise-only scan measures what the array's coupling did to the noise;
-prewhitening is the change of basis that makes its covariance the identity.
-Compression then keeps the leading virtual channels, which is what makes a
-48-channel scan solvable at the size of an 8-channel one.
+prewhitening is the change of basis that makes its covariance the identity, so
+every estimator downstream is entitled to the assumption it was already making.
 
 ```python
 whitened = mru.noise_prewhiten(kspace, noise_scan, coil_axis=0)
+```
+
+![prewhitening a receive array](examples/figures/coils.png)
+
+### Coil compression
+
+The elements of an array overlap, so their measurements do too, and the
+singular values fall away long before the channel count does. Compression is
+what makes a 48-channel scan solvable at the size of an 8-channel one — and
+because the channels it discards are mostly noise, it is a denoiser as much as
+a reduction.
+
+```python
 compressed, basis = mru.coil_compress(whitened, 8)  # or 0.95 of the energy
 ```
 
-`coil_compress` returns the basis as well as the data, so the acquisitions that
-arrive after a calibration — and the sensitivities they are solved against —
-are compressed the same way.
+The basis comes back as well as the data: it is established once on a
+calibration and applied to every acquisition that follows, and to the
+sensitivities they are solved against.
 
-![prewhitening a receive array](examples/figures/coils.png)
+```python
+compressed = mru.apply_coil_compression(basis, later_acquisition)
+```
+
+That application is where a large scan runs out of memory. Pacing the product
+on the device the data already sits on does not help — the peak is the result,
+which is needed either way. Keeping the scan off the accelerator and streaming
+batches through it does: for a 1.4 GiB scan compressed 32 channels to 8, the
+card holds **48 MiB instead of 1839 MiB**, for the same answer.
+
+```python
+compressed = mru.apply_coil_compression(basis, host_scan, device="cuda")
+```
+
+![coil compression](examples/figures/compression.png)
 
 [`examples/coils.ipynb`](examples/coils.ipynb)
 
@@ -94,16 +120,18 @@ on_grid = readout @ operator.T
 
 ### Apodization
 
-A window trades resolution for a point spread function without side lobes.
-Fermi sets its radius and its transition width separately; Hann is the raised
-cosine over the whole radius. Both are radial in normalized k, so an
-anisotropic matrix gets an ellipsoid matched to its own grid rather than a
-sphere that clips one axis first.
+A window trades resolution for a point spread function without side lobes,
+following Bernstein et al.: a one-dimensional kernel in a coordinate whose
+half height sits at each axis's own Nyquist edge, extended over the grid
+either *radially* — an ellipsoid, more isotropic resolution and higher SNR —
+or *separably*, which keeps more of k-space's corners and resolves the
+diagonals better. Two entries or three, a slice or a slab.
 
 ```python
-apodized = mru.apodize(kspace, kind="fermi", radius=0.9, width=0.05)
-apodized = mru.apodize(kspace, kind="hann")
-window = mru.fermi_window((256, 256))
+apodized = mru.apodize(kspace, kind="fermi")  # radial, T = 10/(N/2)
+apodized = mru.apodize(kspace, kind="hann", geometry="separable")
+slab = mru.apodize(volume, kind="fermi", axes=(-3, -2, -1))
+window = mru.fermi_window((256, 256), radius=0.9, width=0.05)
 ```
 
 ![apodization against Gibbs ringing](examples/figures/apodization.png)
@@ -112,20 +140,16 @@ window = mru.fermi_window((256, 256))
 
 ### After the solve
 
-`field_map` takes the angle of the product of consecutive echoes, so a receive
-phase common to every echo cancels; the echo spacing sets the range it can
-carry. `bias_field_correct` is N4 on the coil-combined magnitude.
+`bias_field_correct` is N4 on the coil-combined magnitude: the shading a
+surface array leaves is smooth and multiplicative, which is what lets it be
+separated from anatomy at all.
 
 ```python
-offset_hz = mru.field_map(echo_images, echo_times)
 corrected = mru.bias_field_correct(magnitude)  # needs [bias]
 ```
 
-![off-resonance from a multi-echo train](examples/figures/field_map.png)
-
 ![N4 shading correction](examples/figures/bias_field.png)
 
-[`examples/field_map.ipynb`](examples/field_map.ipynb) ·
 [`examples/bias_field.ipynb`](examples/bias_field.ipynb)
 
 ## References
@@ -149,6 +173,11 @@ the methods it implements.
   planar imaging with nonequidistant k-space sampling.* Magn Reson Med
   1992;23:311-323. The odd/even phase correction and the ramp-sampling
   resampling.
+- Bernstein MA, Fain SB, Riederer SJ. *Effect of windowing and zero-filled
+  reconstruction of MRI data on spatial resolution and acquisition strategy.*
+  J Magn Reson Imaging 2001;14:270-280. The window kernels, the half-height-at-
+  Nyquist normalization, and the radial-versus-separable geometry — whose
+  52.4% (2D) and 50.7% (3D) corner ratios the examples reproduce.
 - Tustison NJ, Avants BB, Cook PA, Zheng Y, Egan A, Yushkevich PA, Gee JC.
   *N4ITK: improved N3 bias correction.* IEEE Trans Med Imaging
   2010;29:1310-1320.

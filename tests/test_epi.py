@@ -175,3 +175,89 @@ def test_a_reversed_line_is_flipped_even_without_a_phase():
     line = (np.arange(16) + 1j).astype(np.complex64)[None]
     corrected = mru.correct_lines([(line, True)])
     assert np.allclose(corrected[0], line[..., ::-1])
+
+
+def _ghosted_train(n=64, slope=0.6, offset=0.25):
+    """An EPI train carrying an odd/even phase, and the navigator that sees it."""
+    y, x = np.mgrid[-1 : 1 : n * 1j, -1 : 1 : n * 1j]
+    image = (((x / 0.5) ** 2 + (y / 0.7) ** 2) <= 1).astype(complex)
+    hybrid = mru.ifftc(mru.fftc(image), axes=-1)
+    readout = np.linspace(-1.0, 1.0, n)
+
+    train = []
+    for line in range(n):
+        backwards = line % 2 == 1
+        sign = -1.0 if backwards else 1.0
+        row = hybrid[line] * np.exp(1j * sign * (slope * readout + offset))
+        encoded = mru.fftc(row[None], axes=-1)
+        stored = np.ascontiguousarray(encoded[:, ::-1]) if backwards else encoded
+        train.append((stored, backwards))
+
+    centre = hybrid[n // 2]
+    forward = mru.fftc(
+        (centre * np.exp(1j * (slope * readout + offset)))[None], axes=-1
+    )
+    backward = mru.fftc(
+        (centre * np.exp(-1j * (slope * readout + offset)))[None], axes=-1
+    )
+    return image, train, [forward, backward, forward]
+
+
+def test_the_ramp_operator_answers_beside_its_positions(to_array, as_numpy):
+    sampled = to_array(np.sin(np.linspace(-np.pi / 2, np.pi / 2, 24)) * 0.5)
+    uniform = to_array(np.linspace(-0.5, 0.5, 24))
+    operator = mru.epi_ramp_operator(sampled, uniform, 8)
+    assert (
+        type(operator).__module__.split(".")[0]
+        == type(sampled).__module__.split(".")[0]
+    )
+    if hasattr(sampled, "device"):
+        assert operator.device == sampled.device
+    reference = mru.epi_ramp_operator(
+        np.sin(np.linspace(-np.pi / 2, np.pi / 2, 24)) * 0.5,
+        np.linspace(-0.5, 0.5, 24),
+        8,
+    )
+    assert np.allclose(as_numpy(operator), reference, atol=1e-5)
+
+
+def test_the_phase_fit_answers_beside_its_navigator(to_array, as_numpy):
+    """The rotation must match; the constant is only fixed modulo 2*pi.
+
+    Which branch the unwrap lands on follows the last bits of the transform,
+    so it can differ between a host and a device for the same navigator. The
+    fit is used as ``exp(1j * ramp)``, where the two are the same rotation.
+    """
+    _, _, navigator = _ghosted_train()
+    reference = mru.estimate_epi_phase(navigator)
+    fit = as_numpy(mru.estimate_epi_phase([to_array(line) for line in navigator]))
+    assert np.allclose(fit[1:], reference[1:], atol=1e-4)
+    assert np.allclose(np.exp(1j * fit[0]), np.exp(1j * reference[0]), atol=1e-4)
+
+
+def test_correcting_a_train_keeps_it_where_it_was(to_array, as_numpy):
+    """The whole correction runs without the data leaving its device."""
+    image, train, navigator = _ghosted_train()
+    moved = [(to_array(data), backwards) for data, backwards in train]
+    fit = mru.estimate_epi_phase([to_array(line) for line in navigator])
+
+    corrected = mru.correct_lines(moved, fit)
+    assert (
+        type(corrected[0]).__module__.split(".")[0]
+        == type(moved[0][0]).__module__.split(".")[0]
+    )
+    if hasattr(moved[0][0], "device"):
+        assert corrected[0].device == moved[0][0].device
+
+    stacked = np.concatenate([as_numpy(line) for line in corrected], axis=0)
+    estimate = mru.ifftc(stacked)
+    background = np.abs(image) < 1e-6
+    assert np.abs(estimate)[background].max() / np.abs(estimate).max() < 1e-3
+
+
+def test_a_reversed_line_is_flipped_the_same_way_in_either_namespace(
+    to_array, as_numpy
+):
+    line = np.arange(8, dtype=complex)[None]
+    flipped = mru.correct_lines([(to_array(line), True)])[0]
+    assert np.allclose(as_numpy(flipped), line[:, ::-1])

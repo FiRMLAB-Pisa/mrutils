@@ -107,3 +107,107 @@ def test_the_basis_is_a_materialized_array_not_a_lazy_conjugate_view():
     _, matrix = mru.coil_compress(lines, 4)
     assert not matrix.is_conj()
     assert matrix.numpy().shape == (4, 8)
+
+
+def test_batching_changes_nothing_but_the_working_set(to_array, as_numpy):
+    """The whole point: the answer must not depend on how it was paced."""
+    rng = np.random.default_rng(3)
+    lines = to_array(
+        (rng.normal(size=(6, 2048)) + 1j * rng.normal(size=(6, 2048))).astype(
+            np.complex128
+        )
+    )
+    whole, basis = mru.coil_compress(lines, 3)
+    paced, paced_basis = mru.coil_compress(lines, 3, batch_size=97)
+    assert np.allclose(as_numpy(whole), as_numpy(paced))
+    assert np.allclose(as_numpy(basis), as_numpy(paced_basis))
+
+
+def test_applying_a_basis_in_passes_matches_applying_it_at_once(to_array, as_numpy):
+    rng = np.random.default_rng(4)
+    lines = to_array(
+        (rng.normal(size=(6, 1000)) + 1j * rng.normal(size=(6, 1000))).astype(
+            np.complex128
+        )
+    )
+    _, basis = mru.coil_compress(lines, 2)
+    at_once = as_numpy(basis @ lines)
+    in_passes = as_numpy(mru.apply_coil_compression(basis, lines, batch_size=64))
+    assert np.allclose(at_once, in_passes)
+
+
+def test_a_basis_applies_to_the_shape_the_scan_arrived_in(to_array, as_numpy):
+    """A basis is (virtual, coils); everything past the channels is untouched."""
+    rng = np.random.default_rng(5)
+    volume = to_array(
+        (rng.normal(size=(8, 4, 16, 20)) + 1j * rng.normal(size=(8, 4, 16, 20))).astype(
+            np.complex128
+        )
+    )
+    flat = volume.reshape(8, -1)
+    _, basis = mru.coil_compress(flat, 3)
+    compressed = mru.apply_coil_compression(basis, volume)
+    assert as_numpy(compressed).shape == (3, 4, 16, 20)
+    assert np.allclose(
+        as_numpy(compressed).reshape(3, -1), as_numpy(basis @ flat), atol=1e-10
+    )
+
+
+def test_a_basis_applies_along_a_named_coil_axis(to_array, as_numpy):
+    rng = np.random.default_rng(6)
+    data = to_array(
+        (rng.normal(size=(4, 8, 32)) + 1j * rng.normal(size=(4, 8, 32))).astype(
+            np.complex128
+        )
+    )
+    _, basis = mru.coil_compress(
+        as_numpy(data).transpose(1, 0, 2).reshape(8, -1).astype(np.complex128), 3
+    )
+    compressed = mru.apply_coil_compression(to_array(basis), data, coil_axis=1)
+    assert as_numpy(compressed).shape == (4, 3, 32)
+
+
+def test_a_basis_that_does_not_fit_the_channels_is_refused():
+    basis = np.eye(3, 8, dtype=complex)
+    with pytest.raises(ValueError, match="does not fit 4 channels"):
+        mru.apply_coil_compression(basis, np.ones((4, 16), dtype=complex))
+
+
+def test_a_non_positive_batch_is_refused():
+    lines = np.ones((4, 32), dtype=complex)
+    with pytest.raises(ValueError, match="batch_size must be positive"):
+        mru.coil_compress(lines, 2, batch_size=0)
+
+
+def test_a_calibration_region_that_selects_nothing_is_refused():
+    lines = np.ones((4, 32), dtype=complex)
+    trajectory = np.ones((32, 2))
+    with pytest.raises(ValueError, match="no samples"):
+        mru.coil_compress(lines, 2, trajectory=trajectory, calibration_radius=0.1)
+
+
+@pytest.mark.cuda
+def test_streaming_through_a_device_bounds_what_that_device_holds():
+    """The reason the batching exists: a scan the accelerator cannot hold."""
+    torch = pytest.importorskip("torch")
+    if not torch.cuda.is_available():
+        pytest.skip("no CUDA device")
+
+    host = torch.randn(16, 400_000, dtype=torch.complex64)
+    _, basis = mru.coil_compress(host[:, :20_000], 4)
+
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    streamed = mru.apply_coil_compression(
+        basis, host, device="cuda", batch_size=1 << 15
+    )
+    streamed_peak = torch.cuda.max_memory_allocated()
+
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    whole = (basis.cuda() @ host.cuda()).cpu()
+    whole_peak = torch.cuda.max_memory_allocated()
+
+    assert streamed.device == host.device
+    assert torch.allclose(streamed, whole, atol=1e-4)
+    assert streamed_peak < whole_peak / 4

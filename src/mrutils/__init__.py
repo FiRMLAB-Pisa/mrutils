@@ -17,9 +17,8 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _distribution_version
 
 from ._bias import bias_field_correct
-from ._coils import coil_compress, noise_prewhiten
+from ._coils import apply_coil_compression, coil_compress, noise_prewhiten
 from ._epi import correct_lines, epi_ramp_operator, estimate_epi_phase
-from ._fieldmap import field_map
 from ._fourier import (
     centered_fftn,
     fftc,
@@ -39,6 +38,7 @@ except PackageNotFoundError:  # a source tree that was never installed
 __all__ = [
     "__version__",
     "apodize",
+    "apply_coil_compression",
     "bias_field_correct",
     "centered_fftn",
     "coil_compress",
@@ -47,7 +47,6 @@ __all__ = [
     "estimate_epi_phase",
     "fermi_window",
     "fftc",
-    "field_map",
     "hann_window",
     "ifftc",
     "noise_prewhiten",
