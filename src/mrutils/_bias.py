@@ -53,7 +53,10 @@ def bias_field_correct(
     mask
         Where to estimate the field, same shape as ``image``. ``None`` uses
         Otsu's threshold on the image itself, which is what excludes air --
-        estimating over background is what drags a field towards noise.
+        estimating over background is what drags a field towards noise. A
+        wider mask is not a better one: the field is fitted only where the
+        mask says there is signal, so including the object's dim boundary
+        fits the field partly to the roll-off there.
     shrink_factor
         How much to coarsen the grid the field is fitted on.
     iterations
