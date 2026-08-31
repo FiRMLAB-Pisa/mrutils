@@ -12,7 +12,6 @@ on synthetic data — there is nothing to download.
 | [`apodization.ipynb`](apodization.ipynb) | `fermi_window`, `hann_window`, `apodize` | side-lobe height against main-lobe width |
 | [`field_map.ipynb`](field_map.ipynb) | `field_map` | a known field, and where it aliases |
 | [`bias_field.ipynb`](bias_field.ipynb) | `bias_field_correct` | a known shading, and one tissue's uniformity |
-| [`density.ipynb`](density.ipynb) | `pipe_menon_dcf` | the closed form for radial, `1 / \|k\|` |
 
 The figures under [`figures/`](figures/) are what the README shows, and each is
 written by the notebook of the same name. Regenerating them is running the

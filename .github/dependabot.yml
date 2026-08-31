@@ -27,7 +27,7 @@ updates:
       prefix: "deps"
     groups:
       numerical:
-        patterns: ["numpy", "scipy", "torch*", "triton", "mri-nufft", "finufft", "cufinufft"]
+        patterns: ["numpy", "scipy", "torch*", "SimpleITK"]
       mr-stack:
         patterns: ["mrutils", "mrtoeplitz", "mrllr", "mrmotion", "mrdistortion", "torchsolve", "deepinv", "SimpleITK"]
       dev-tooling:

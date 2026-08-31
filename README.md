@@ -26,7 +26,6 @@ impressed on purpose, a field with a closed form.
 ```bash
 pip install mrutils                # numpy + scipy
 pip install mrutils[torch]         # keep tensors on their device
-pip install mrutils[dcf]           # Pipe-Menon density compensation
 pip install mrutils[bias]          # N4 bias-field correction
 pip install mrutils[all]
 ```
@@ -116,24 +115,18 @@ window = mru.fermi_window((256, 256))
 `field_map` takes the angle of the product of consecutive echoes, so a receive
 phase common to every echo cancels; the echo spacing sets the range it can
 carry. `bias_field_correct` is N4 on the coil-combined magnitude.
-`pipe_menon_dcf` gives the weights that turn an adjoint NUFFT into a direct
-image.
 
 ```python
 offset_hz = mru.field_map(echo_images, echo_times)
 corrected = mru.bias_field_correct(magnitude)  # needs [bias]
-weights = mru.pipe_menon_dcf(trajectory, (256, 256))  # needs [dcf]
 ```
 
 ![off-resonance from a multi-echo train](examples/figures/field_map.png)
 
 ![N4 shading correction](examples/figures/bias_field.png)
 
-![density compensation](examples/figures/density.png)
-
 [`examples/field_map.ipynb`](examples/field_map.ipynb) ·
-[`examples/bias_field.ipynb`](examples/bias_field.ipynb) ·
-[`examples/density.ipynb`](examples/density.ipynb)
+[`examples/bias_field.ipynb`](examples/bias_field.ipynb)
 
 ## References
 
@@ -145,8 +138,6 @@ the methods it implements.
   reconstruction steps that are common to everyone, as plain array functions.
   This package keeps that scope and drops the ISMRMRD file format, so nothing
   here needs a data model to be called.
-- **MRI-NUFFT** — <https://github.com/mind-inria/mri-nufft>. Its `density.pipe`
-  is what `pipe_menon_dcf` calls.
 - **SimpleITK** — <https://simpleitk.org/>. Its
   `N4BiasFieldCorrectionImageFilter` is what `bias_field_correct` calls.
 - Roemer PB, Edelstein WA, Hayes CE, Souza SP, Mueller OM. *The NMR phased
@@ -158,8 +149,6 @@ the methods it implements.
   planar imaging with nonequidistant k-space sampling.* Magn Reson Med
   1992;23:311-323. The odd/even phase correction and the ramp-sampling
   resampling.
-- Pipe JG, Menon P. *Sampling density compensation in MRI: rationale and an
-  iterative numerical solution.* Magn Reson Med 1999;41:179-186.
 - Tustison NJ, Avants BB, Cook PA, Zheng Y, Egan A, Yushkevich PA, Gee JC.
   *N4ITK: improved N3 bias correction.* IEEE Trans Med Imaging
   2010;29:1310-1320.

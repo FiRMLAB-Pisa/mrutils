@@ -18,7 +18,6 @@ from importlib.metadata import version as _distribution_version
 
 from ._bias import bias_field_correct
 from ._coils import coil_compress, noise_prewhiten
-from ._density import pipe_menon_dcf
 from ._epi import correct_lines, epi_ramp_operator, estimate_epi_phase
 from ._fieldmap import field_map
 from ._fourier import (
@@ -52,7 +51,6 @@ __all__ = [
     "hann_window",
     "ifftc",
     "noise_prewhiten",
-    "pipe_menon_dcf",
     "remove_readout_oversampling",
     "resize_centered",
     "resize_centered_axis",
