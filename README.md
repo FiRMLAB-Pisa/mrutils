@@ -17,11 +17,9 @@ not a dependency.
 
 The package is deliberately small, and it is the base of a family of MRI
 packages rather than a reconstruction of its own — no solvers, no physics
-operators, no sensitivity estimation. Each function below has a notebook that
-runs it against something known: a round trip, a covariance, a phase that was
-impressed on purpose, a field with a closed form.
+operators, no sensitivity estimation.
 
-## Install
+## Quick Start
 
 ```bash
 pip install mrutils                # numpy + scipy
@@ -30,132 +28,62 @@ pip install mrutils[bias]          # N4 bias-field correction
 pip install mrutils[all]
 ```
 
-## Usage
-
-### The Fourier convention
-
-`ifftshift -> fft(norm="ortho") -> fftshift`, stated once so nothing downstream
-re-derives the shifts. Cropping and padding are about the same centre, so
-neither moves the object.
+The Fourier convention is `ifftshift -> fft(norm="ortho") -> fftshift`, stated
+once so nothing downstream re-derives the shifts, and cropping and padding are
+about the same centre so neither moves the object.
 
 ```python
 import mrutils as mru
 
-kspace = mru.fftc(image)  # last two axes by default
-plane = mru.ifftc(volume, axes=-1)  # decouple a readout
+# the centred transform, over the last two axes by default
+kspace = mru.fftc(image)
+plane = mru.ifftc(volume, axes=-1)
+
+# crop or pad about the centre, and drop readout oversampling
 coarse = mru.resize_centered(kspace, (128, 128))
 readout = mru.remove_readout_oversampling(digitised, 256)
-```
 
-![the Fourier convention](examples/figures/fourier.png)
-
-[`examples/fourier.ipynb`](examples/fourier.ipynb)
-
-### Before the solve
-
-A noise-only scan measures what the array's coupling did to the noise;
-prewhitening is the change of basis that makes its covariance the identity, so
-every estimator downstream is entitled to the assumption it was already making.
-
-```python
+# whiten against a noise-only scan, so the array's coupling stops being a term
 whitened = mru.noise_prewhiten(kspace, noise_scan, coil_axis=0)
-```
 
-![prewhitening a receive array](examples/figures/coils.png)
-
-### Coil compression
-
-The elements of an array overlap, so their measurements do too, and the
-singular values fall away long before the channel count does. Compression is
-what makes a 48-channel scan solvable at the size of an 8-channel one — and
-because the channels it discards are mostly noise, it is a denoiser as much as
-a reduction.
-
-```python
+# compress the array, keeping the basis for every acquisition that follows
 compressed, basis = mru.coil_compress(whitened, 8)  # or 0.95 of the energy
-```
-
-The basis comes back as well as the data: it is established once on a
-calibration and applied to every acquisition that follows, and to the
-sensitivities they are solved against.
-
-```python
 compressed = mru.apply_coil_compression(basis, later_acquisition)
-```
 
-That application is where a large scan runs out of memory. Pacing the product
-on the device the data already sits on does not help — the peak is the result,
-which is needed either way. Keeping the scan off the accelerator and streaming
-batches through it does: for a 1.4 GiB scan compressed 32 channels to 8, the
-card holds **48 MiB instead of 1839 MiB**, for the same answer.
-
-```python
+# stream a scan too large for the card, off the host, for the same answer
 compressed = mru.apply_coil_compression(basis, host_scan, device="cuda")
-```
 
-![coil compression](examples/figures/compression.png)
-
-[`examples/coils.ipynb`](examples/coils.ipynb)
-
-### EPI
-
-Reversing a readout does not reverse the delays it was played through, so a
-line read backwards carries a phase its neighbours do not, and that is the
-Nyquist ghost. A blip-nulled navigator measures the phase directly. Ramp
-sampling is a separate problem and a change of basis rather than an
-interpolation: the readout is band-limited, so samples taken anywhere determine
-it everywhere.
-
-```python
+# the EPI Nyquist ghost, measured from a blip-nulled navigator
 phase = mru.estimate_epi_phase([plus, minus, plus])
 lines = mru.correct_lines(train, phase)  # [(data, is_reversed), ...]
 
+# ramp sampling, as a change of basis rather than an interpolation
 operator = mru.epi_ramp_operator(sampled_k, uniform_k, support=matrix)
 on_grid = readout @ operator.T
-```
 
-![removing the Nyquist ghost](examples/figures/epi.png)
-
-[`examples/epi.ipynb`](examples/epi.ipynb)
-
-### Apodization
-
-A window trades resolution for a point spread function without side lobes,
-following Bernstein et al.: a one-dimensional kernel in a coordinate whose
-half height sits at each axis's own Nyquist edge, extended over the grid
-either *radially* — an ellipsoid, more isotropic resolution and higher SNR —
-or *separably*, which keeps more of k-space's corners and resolves the
-diagonals better. Two entries or three, a slice or a slab.
-
-```python
-apodized = mru.apodize(kspace, kind="fermi")  # radial, T = 10/(N/2)
-apodized = mru.apodize(kspace, kind="hann", geometry="separable")
-slab = mru.apodize(volume, kind="fermi", axes=(-3, -2, -1))
+# apodize: radial for isotropic resolution, separable to keep the corners
+apodized = mru.apodize(kspace, kind="fermi")
+slab = mru.apodize(volume, kind="hann", geometry="separable", axes=(-3, -2, -1))
 window = mru.fermi_window((256, 256), radius=0.9, width=0.05)
-```
 
-![apodization against Gibbs ringing](examples/figures/apodization.png)
-
-[`examples/apodization.ipynb`](examples/apodization.ipynb)
-
-### After the solve
-
-`bias_field_correct` is N4 on the coil-combined magnitude: the shading a
-surface array leaves is smooth and multiplicative, which is what lets it be
-separated from anatomy at all.
-
-```python
+# N4 on the coil-combined magnitude, after the solve
 corrected = mru.bias_field_correct(magnitude)  # needs [bias]
 ```
 
-![N4 shading correction](examples/figures/bias_field.png)
+## Examples
 
-[`examples/bias_field.ipynb`](examples/bias_field.ipynb)
+Each runs its function against something known: a round trip, a covariance, a
+phase impressed on purpose, a field with a closed form.
 
-## References
+| | | |
+|---|---|---|
+| [`fourier.ipynb`](examples/fourier.ipynb) | the centred convention, and what cropping about the wrong centre does | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/fourier.ipynb) |
+| [`coils.ipynb`](examples/coils.ipynb) | prewhitening a receive array, and compressing it | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/coils.ipynb) |
+| [`epi.ipynb`](examples/epi.ipynb) | the Nyquist ghost, and ramp sampling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/epi.ipynb) |
+| [`apodization.ipynb`](examples/apodization.ipynb) | windows against Gibbs ringing, radial against separable | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/apodization.ipynb) |
+| [`bias_field.ipynb`](examples/bias_field.ipynb) | N4 against the shading a surface array leaves | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/bias_field.ipynb) |
 
-The package this one takes its scope from, the implementations it calls, and
-the methods it implements.
+## Related Works
 
 - **ismrmrd-python-tools** —
   <https://github.com/ismrmrd/ismrmrd-python-tools>. The same idea: the
