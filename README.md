@@ -10,6 +10,15 @@ apodization that happen after.
 [![PyPI](https://img.shields.io/pypi/v/mrutils.svg)](https://pypi.org/project/mrutils/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+![what each step does](examples/figures/showcase.png)
+
+*The five families, each above the step that corrects it: the centred transform
+and its round trip, a receive array's noise covariance before and after
+prewhitening, the Nyquist ghost an odd/even phase leaves, Gibbs ringing off a
+truncated k-space, and the shading a surface array leaves. Every panel comes
+from the same calls the numbered examples make —
+`python examples/figures/make_showcase.py`.*
+
 Everything is array in, array out: Torch tensors keep their device and NumPy
 arrays stay NumPy, so the same step runs on a scanner host and on a
 workstation without either having to convert to reach it. Torch is an extra,
@@ -73,15 +82,17 @@ corrected = mru.bias_field_correct(magnitude)  # needs [bias]
 ## Examples
 
 Each runs its function against something known: a round trip, a covariance, a
-phase impressed on purpose, a field with a closed form.
+phase impressed on purpose, a field with a closed form. The `.py` beside each
+notebook is the source — it runs as a script and lints with the rest of the
+package, and `scripts/build_examples.sh` is what turns it into the notebook.
 
 | | | |
 |---|---|---|
-| [`fourier.ipynb`](examples/fourier.ipynb) | the centred convention, and what cropping about the wrong centre does | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/fourier.ipynb) |
-| [`coils.ipynb`](examples/coils.ipynb) | prewhitening a receive array, and compressing it | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/coils.ipynb) |
-| [`epi.ipynb`](examples/epi.ipynb) | the Nyquist ghost, and ramp sampling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/epi.ipynb) |
-| [`apodization.ipynb`](examples/apodization.ipynb) | windows against Gibbs ringing, radial against separable | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/apodization.ipynb) |
-| [`bias_field.ipynb`](examples/bias_field.ipynb) | N4 against the shading a surface array leaves | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/bias_field.ipynb) |
+| [`01-fourier`](examples/01-fourier.ipynb) | the centred convention, and what cropping about the wrong centre does | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/01-fourier.ipynb) |
+| [`02-coils`](examples/02-coils.ipynb) | prewhitening a receive array, and compressing it | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/02-coils.ipynb) |
+| [`03-epi`](examples/03-epi.ipynb) | the Nyquist ghost, and ramp sampling | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/03-epi.ipynb) |
+| [`04-apodization`](examples/04-apodization.ipynb) | windows against Gibbs ringing, radial against separable | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/04-apodization.ipynb) |
+| [`05-bias_field`](examples/05-bias_field.ipynb) | N4 against the shading a surface array leaves | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FiRMLAB-Pisa/mrutils/blob/main/examples/05-bias_field.ipynb) |
 
 ## Related Works
 
@@ -116,6 +127,7 @@ phase impressed on purpose, a field with a closed form.
 pip install -e .[dev]
 bash scripts/format_and_lint.sh
 pytest -q
+bash scripts/build_examples.sh    # rebuild the notebooks and their figures
 ```
 
 The docstring examples run as part of the suite — they are the documentation,
